@@ -1,2 +1,2 @@
 # Phys375_FinalProject
-Code for our final project of stellar rotation
+Code and plots for our final project involving the special case of stellar rotation
