@@ -373,7 +373,7 @@ def main():
     RK_obj = RK45(All_Gradients, r, [p, T, M, L, t], max_step=dr,
                   t_bound=10**12)
     
-    N_steps = 2*10**4
+    N_steps = 10**4
     for i in range(N_steps):
         
         RK_obj.step()
@@ -406,7 +406,7 @@ def main():
     ax1.ticklabel_format(axis='both', scilimits=(0,0))
    # ax1.set_yscale('log')##################
     fig1.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Density_Radius.png"))
     
     fig2, ax2 = plt.subplots(dpi=300)
@@ -417,7 +417,7 @@ def main():
     ax2.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax2.set_yscale('log')####################
     fig2.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Temperature_Radius.png"))
     
     fig3, ax3 = plt.subplots(dpi=300)
@@ -428,7 +428,7 @@ def main():
     ax3.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax3.set_yscale('log')#####################
     fig3.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Energy_Generation_Radius.png"))
     
     fig4, ax4 = plt.subplots(dpi=300)
@@ -439,7 +439,7 @@ def main():
     ax4.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax4.set_yscale('log')#####################
     fig4.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Opacity_Radius.png"))
     
     fig5, ax5 = plt.subplots(dpi=300)
@@ -450,7 +450,7 @@ def main():
     ax5.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax5.set_yscale('log')#####################
     fig5.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Pressure_Radius.png"))
     
     fig6, ax6 = plt.subplots(dpi=300)
@@ -461,7 +461,7 @@ def main():
     ax6.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax6.set_yscale('log')####################
     fig6.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Mass_Radius.png"))
     
     fig7, ax7 = plt.subplots(dpi=300)
@@ -472,7 +472,7 @@ def main():
     ax7.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax7.set_yscale('log')#######################
     fig7.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Luminosity_Radius.png"))
     
     fig8, ax8 = plt.subplots(dpi=300)
@@ -483,7 +483,7 @@ def main():
     ax8.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax8.set_yscale('log')########################
     fig8.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Optical_Depth_Radius.png"))
     
     fig9, ax9 = plt.subplots(dpi=300)
@@ -494,7 +494,7 @@ def main():
     ax9.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax9.set_yscale('log')#######################
     fig9.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Mass_Gradient_Radius.png"))
     
     fig10, ax10 = plt.subplots(dpi=300)
@@ -505,7 +505,7 @@ def main():
     ax10.ticklabel_format(axis='both', scilimits=(0,0))
  #   ax10.set_yscale('log')########################
     fig10.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Luminosity_Gradient_Radius.png"))
     
     fig11, ax11 = plt.subplots(dpi=300)
@@ -515,7 +515,7 @@ def main():
     fig11.suptitle('Temperature Gradient vs Radius', weight='bold')
     ax11.ticklabel_format(axis='both', scilimits=(0,0))
     fig11.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Temperature_Gradient_Radius.png"))
     
     fig12, ax12 = plt.subplots(dpi=300)
@@ -525,7 +525,7 @@ def main():
     fig12.suptitle('Density Gradient vs Radius', weight='bold')
     ax12.ticklabel_format(axis='both', scilimits=(0,0))
     fig12.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Density_Gradient_Radius.png"))
     
     fig13, ax13 = plt.subplots(dpi=300)
@@ -536,7 +536,7 @@ def main():
     ax13.ticklabel_format(axis='both', scilimits=(0,0))
   #  ax13.set_yscale('log')########################
     fig13.savefig(os.path.join(os.path.abspath(
-            r"C:\Users\James\Documents\Phys 375_Stars_W2021\Final_Plots"),
+            r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Optical_Depth_Gradient_Radius.png"))
     
     
