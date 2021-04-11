@@ -336,7 +336,7 @@ def All_Gradients(r, all_variables):
 def main():
     
     # Radius step size
-    dr = 10**4
+    dr = 10**5
     
     # Initial values
     r = dr
@@ -375,7 +375,7 @@ def main():
     RK_obj = RK45(All_Gradients, r, [p, T, M, L, t], max_step=dr, 
                   t_bound=10**12)
     
-    N_steps = 5*10**5
+    N_steps = 10**4
     for i in range(N_steps):
         
         RK_obj.step()
@@ -405,6 +405,7 @@ def main():
     ax1.set_ylabel('Density ($kg/m^3$)')
     fig1.suptitle('Density vs Radius', weight='bold')
     ax1.ticklabel_format(axis='both', scilimits=(0,0))
+    ax1.set_yscale('log')
     fig1.savefig(os.path.join(os.path.abspath(
             r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Density_Radius.png"))
@@ -415,6 +416,7 @@ def main():
     ax2.set_ylabel('Temperature (K)')
     fig2.suptitle('Temperature vs Radius', weight='bold')
     ax2.ticklabel_format(axis='both', scilimits=(0,0))
+    ax2.set_yscale('log')
     fig2.savefig(os.path.join(os.path.abspath(
             r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Temperature_Radius.png"))
@@ -435,6 +437,7 @@ def main():
     ax4.set_ylabel('Opacity ($m^2/kg$)')
     fig4.suptitle('Rosseland Mean Opacity vs Radius', weight='bold')
     ax4.ticklabel_format(axis='both', scilimits=(0,0))
+    ax4.set_yscale('log')
     fig4.savefig(os.path.join(os.path.abspath(
             r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Opacity_Radius.png"))
@@ -528,7 +531,6 @@ def main():
     fig13.savefig(os.path.join(os.path.abspath(
             r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
             "Optical_Depth_Gradient_Radius.png"))
-    
     
     
     
