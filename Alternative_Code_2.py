@@ -22,7 +22,8 @@ mass_prot = 1.67*10**-27
 boltz_const = 1.38*10**-23
 X = 0.7
 XCNO = 0.03*X
-Z = 0.034042836
+#Z = 0.034042836
+Z = 0.0341089883#0.0340464004#0.035
 Y = 1-X-Z
 mu = (2*X + 0.75*Y + 0.5*Z)**-1
 
@@ -87,10 +88,10 @@ def opacity(dens, temp):
 
 
 # Sets the initial conditions
-drad = 10**4
-rad0 = drad
-dens0 = 58560
-temp0 = 8.23*10**6
+drad = 10**3
+rad0 = 1
+dens0 = 58556
+temp0 = 8.23544*10**6
 
 opac0 = opacity(dens0, temp0)
 eps0 = epsilon(dens0, temp0)
@@ -113,7 +114,7 @@ dens_grad0 = density_gradient(encl_mass0, dens0, rad0,
 
 
 # Sets initial arrays
-N_steps = 70000
+N_steps = 700000
 
 rad_vals = np.zeros(N_steps); rad_vals[0] = rad0
 dens_vals = np.zeros(N_steps); dens_vals[0] = dens0
@@ -185,7 +186,8 @@ for j in range(N_steps):
     
     
 fig, ax = plt.subplots(dpi=300)
-ax.plot(r_vals, K_vals, 'g-')
+ax.plot(r_vals, T_vals, 'g-')
+ax.set_yscale('log')
 
 #ax.set_yscale('log')
 #ax.plot(r_vals, dtdr_vals_from_data, 'r-')
