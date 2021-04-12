@@ -230,7 +230,7 @@ def Optical_Depth_Gradient(K, p):
 
 
 
-def Temperature_Gradient(p, r, T, L, P, K, M):
+def Temperature_Gradient(p, r, T, L, P, K, M, w):
     '''
     computes the temperature gradient in terms of the density, radius, 
     temperature, luminosity, pressure, opacity, and enclosed mass
@@ -251,6 +251,8 @@ def Temperature_Gradient(p, r, T, L, P, K, M):
         The opacity.
     M : FLOAT
         The enclosed mass.
+    w : FLOAT
+        The angular velocity (omega).
 
     Returns
     -------
@@ -259,12 +261,13 @@ def Temperature_Gradient(p, r, T, L, P, K, M):
 
     '''
     first_term = 3*K*p*L/(16*np.pi*a*c*(T**3)*(r**2))
-    second_term = (1 - 1/gamma)*T*G*M*p/(P*r**2)
+    geff = G*M/(r**2) - 2/3*(w**2)*r
+    second_term = (1 - 1/gamma)*T/P*geff*p
     return np.max([-first_term, -second_term])
 
 
 
-def Density_Gradient(p, r, M, dPdT, dTdr, dPdp):
+def Density_Gradient(p, r, M, dPdT, dTdr, dPdp, w):
     '''
     computes the density gradient in terms of the density, radius, enclosed
     mass, partial derivative of pressure with respect to temperature, the 
@@ -285,6 +288,8 @@ def Density_Gradient(p, r, M, dPdT, dTdr, dPdp):
         The temperature gradient.
     dPdp : FLOAT
         The partial derivative of pressure with respect to density.
+    w : FLOAT
+        The angular velocity (omega).
 
     Returns
     -------
@@ -292,7 +297,8 @@ def Density_Gradient(p, r, M, dPdT, dTdr, dPdp):
         The gradient of density.
 
     '''
-    numerator = G*M*p/(r**2) + dPdT*dTdr
+    geff = G*M/(r**2) - 2/3*(w**2)*r
+    numerator = geff*p + dPdT*dTdr
     denominator = dPdp
     density_gradient = -numerator/denominator
     return density_gradient
@@ -324,8 +330,8 @@ def All_Gradients(r, all_variables):
     E = Energy_Generation_Rate(p, T)
     dPdp = Pressure_Density_Derivative(p, T)
     dPdT = Pressure_Temperature_Derivative(p, T)
-    dTdr = Temperature_Gradient(p, r, T, L, P, K, M)
-    dpdr = Density_Gradient(p, r, M, dPdT, dTdr, dPdp)
+    dTdr = Temperature_Gradient(p, r, T, L, P, K, M, 0)
+    dpdr = Density_Gradient(p, r, M, dPdT, dTdr, dPdp, 0)
     dMdr = Mass_Gradient(p, r)
     dLdr = Luminosity_Gradient(p, r, E)
     dtdr = Optical_Depth_Gradient(K, p)
@@ -349,9 +355,9 @@ K = Opacity(p, T)
 P = Pressure(p, T)
 dMdr = Mass_Gradient(p, r)
 dLdr = Luminosity_Gradient(p, r, E)
-dTdr = Temperature_Gradient(p, r, T, L, P, K, M)
+dTdr = Temperature_Gradient(p, r, T, L, P, K, M, 0)
 dpdr = Density_Gradient(p, r, M, Pressure_Temperature_Derivative(p, T),
-                        dTdr, Pressure_Density_Derivative(p, T))
+                        dTdr, Pressure_Density_Derivative(p, T), 0)
 dtdr = Optical_Depth_Gradient(K, p)
 t = dtdr*dr
 
@@ -392,9 +398,9 @@ for i in range(1, N_steps):
     P = Pressure(p, T); P_vals[i] = P
     dMdr = Mass_Gradient(p, r); dMdr_vals[i] = dMdr
     dLdr = Luminosity_Gradient(p, r, E); dLdr_vals[i] = dLdr
-    dTdr = Temperature_Gradient(p, r, T, L, P, K, M); dTdr_vals[i] = dTdr
+    dTdr = Temperature_Gradient(p, r, T, L, P, K, M, 0); dTdr_vals[i] = dTdr
     dpdr = Density_Gradient(p, r, M, Pressure_Temperature_Derivative(p, T),
-                        dTdr, Pressure_Density_Derivative(p, T)); dpdr_vals[i] = dpdr
+                        dTdr, Pressure_Density_Derivative(p, T), 0); dpdr_vals[i] = dpdr
     dtdr = Optical_Depth_Gradient(K, p); dtdr_vals[i] = dtdr
 
 Radius = 602334100

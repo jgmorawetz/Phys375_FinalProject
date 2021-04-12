@@ -29,15 +29,17 @@ mu = (2*X + 0.75*Y + 0.5*Z)**-1
 
 
 def density_gradient(encl_mass, dens, rad, press_temp_deriv, temp_grad,
-                     press_dens_deriv):
-    numerator = (grav_const*encl_mass*dens)/(rad**2) + press_temp_deriv*temp_grad
+                     press_dens_deriv, omega):
+    geff = grav_const*encl_mass/(rad**2) - 2/3*(omega**2)*rad
+    numerator = geff*dens + press_temp_deriv*temp_grad
     denominator = press_dens_deriv
     return -numerator/denominator
 
 
-def temperature_gradient(opac, dens, lum, temp, rad, press, encl_mass):
+def temperature_gradient(opac, dens, lum, temp, rad, press, encl_mass, omega):
+    geff = grav_const*encl_mass/(rad**2) - 2/3*(omega**2)*rad
     first_term = (3*opac*dens*lum)/(16*np.pi*a_const*speed_light*(temp**3)*(rad**2))
-    second_term = (1 - 1/adiabatic_const)*temp*grav_const*encl_mass*dens/(press*(rad**2))
+    second_term = (1 - 1/adiabatic_const)*temp/press*geff*dens
     return -min(first_term, second_term)
     
     
@@ -106,11 +108,11 @@ opt_depth0 = opt_depth_grad0*rad0
 mass_grad0 = mass_gradient(rad0, dens0)
 lum_grad0 = luminosity_gradient(rad0, dens0, eps0)
 temp_grad0 = temperature_gradient(opac0, dens0, lum0, temp0, rad0,
-                                  press0, encl_mass0)
+                                  press0, encl_mass0, 0)
 dens_grad0 = density_gradient(encl_mass0, dens0, rad0, 
                               pressure_temperature_derivative(dens0, temp0),
                               temp_grad0,
-                              pressure_density_derivative(dens0, temp0))
+                              pressure_density_derivative(dens0, temp0), 0)
 
 
 # Sets initial arrays
@@ -146,9 +148,9 @@ for i in range(1, N_steps):
     opt_depth0 += opt_depth_grad0*drad; opt_depth_vals[i] = opt_depth0
     mass_grad0 = mass_gradient(rad0, dens0); mass_grad_vals[i] = mass_grad0
     lum_grad0 = luminosity_gradient(rad0, dens0, eps0); lum_grad_vals[i] = lum_grad0
-    temp_grad0 = temperature_gradient(opac0, dens0, lum0, temp0, rad0, press0, encl_mass0); temp_grad_vals[i] = temp_grad0
+    temp_grad0 = temperature_gradient(opac0, dens0, lum0, temp0, rad0, press0, encl_mass0, 0); temp_grad_vals[i] = temp_grad0
     dens_grad0 = density_gradient(encl_mass0, dens0, rad0, pressure_temperature_derivative(dens0, temp0),
-                                  temp_grad0, pressure_density_derivative(dens0, temp0)); dens_grad_vals[i] = dens_grad0
+                                  temp_grad0, pressure_density_derivative(dens0, temp0),0); dens_grad_vals[i] = dens_grad0
     
     
 
