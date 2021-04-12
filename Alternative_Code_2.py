@@ -81,30 +81,135 @@ def opacity(dens, temp):
     opacity_es = 0.02*(1+X)
     opacity_ff = (1.0*10**24)*(Z+0.0001)*((dens/10**3)**0.7)*(temp**-3.5)
     opacity_H = (2.5*10**-32)*(Z/0.02)*((dens/10**3)**0.5)*(temp**9)
-    return (1/opacity_H + 1/max(opacity_es, opacity_ff))**-1
+    max_term = max(opacity_es, opacity_ff)
+    return (1/opacity_H + 1/max_term)**-1
 
 
-def all_gradients(rad, all_variables):
+
+# Sets the initial conditions
+drad = 10**4
+rad0 = drad
+dens0 = 58560
+temp0 = 8.23*10**6
+
+opac0 = opacity(dens0, temp0)
+eps0 = epsilon(dens0, temp0)
+press0 = pressure(dens0, temp0)
+
+encl_mass0 = (4*np.pi/3)*(rad0**3)*dens0
+lum0 = (4*np.pi/3)*(rad0**3)*dens0*eps0
+
+opt_depth_grad0 = optical_depth_gradient(opac0, dens0)
+opt_depth0 = opt_depth_grad0*rad0
+
+mass_grad0 = mass_gradient(rad0, dens0)
+lum_grad0 = luminosity_gradient(rad0, dens0, eps0)
+temp_grad0 = temperature_gradient(opac0, dens0, lum0, temp0, rad0,
+                                  press0, encl_mass0)
+dens_grad0 = density_gradient(encl_mass0, dens0, rad0, 
+                              pressure_temperature_derivative(dens0, temp0),
+                              temp_grad0,
+                              pressure_density_derivative(dens0, temp0))
+
+
+# Sets initial arrays
+N_steps = 70000
+
+rad_vals = np.zeros(N_steps); rad_vals[0] = rad0
+dens_vals = np.zeros(N_steps); dens_vals[0] = dens0
+temp_vals = np.zeros(N_steps); temp_vals[0] = temp0
+opac_vals = np.zeros(N_steps); opac_vals[0] = opac0
+eps_vals = np.zeros(N_steps); eps_vals[0] = eps0
+press_vals = np.zeros(N_steps); press_vals[0] = press0
+encl_mass_vals = np.zeros(N_steps); encl_mass_vals[0] = encl_mass0
+lum_vals = np.zeros(N_steps); lum_vals[0] = lum0
+opt_depth_grad_vals = np.zeros(N_steps); opt_depth_grad_vals[0] = opt_depth_grad0
+opt_depth_vals = np.zeros(N_steps); opt_depth_vals[0] = opt_depth0
+mass_grad_vals = np.zeros(N_steps); mass_grad_vals[0] = mass_grad0
+lum_grad_vals = np.zeros(N_steps); lum_grad_vals[0] = lum_grad0
+temp_grad_vals = np.zeros(N_steps); temp_grad_vals[0] = temp_grad0
+dens_grad_vals = np.zeros(N_steps); dens_grad_vals[0] = dens_grad0
+
+
+# Iterates through enough times, by updating the variables each time
+for i in range(1, N_steps):
+    rad0 += drad; rad_vals[i] = rad0
+    dens0 += dens_grad0*drad; dens_vals[i] = dens0
+    temp0 += temp_grad0*drad; temp_vals[i] = temp0
+    opac0 = opacity(dens0, temp0); opac_vals[i] = opac0
+    eps0 = epsilon(dens0, temp0); eps_vals[i] = eps0
+    press0 = pressure(dens0, temp0); press_vals[i] = press0
+    encl_mass0 += mass_grad0*drad; encl_mass_vals[i] = encl_mass0
+    lum0 += lum_grad0*drad; lum_vals[i] = lum0
+    opt_depth_grad0 = optical_depth_gradient(opac0, dens0); opt_depth_grad_vals[i] = opt_depth_grad0
+    opt_depth0 += opt_depth_grad0*drad; opt_depth_vals[i] = opt_depth0
+    mass_grad0 = mass_gradient(rad0, dens0); mass_grad_vals[i] = mass_grad0
+    lum_grad0 = luminosity_gradient(rad0, dens0, eps0); lum_grad_vals[i] = lum_grad0
+    temp_grad0 = temperature_gradient(opac0, dens0, lum0, temp0, rad0, press0, encl_mass0); temp_grad_vals[i] = temp_grad0
+    dens_grad0 = density_gradient(encl_mass0, dens0, rad0, pressure_temperature_derivative(dens0, temp0),
+                                  temp_grad0, pressure_density_derivative(dens0, temp0)); dens_grad_vals[i] = dens_grad0
     
-    dens, temp, encl_mass, lum, opt_depth = all_variables
-    press = pressure(dens, temp)
-    opac = opacity(dens, temp)
-    eps = epsilon(dens, temp)
-    press_dens_deriv = pressure_density_derivative(dens, temp)
-    press_temp_deriv = pressure_temperature_derivative(dens, temp)
-    temp_grad = temperature_gradient(opac, dens, lum, temp, rad, press, encl_mass)
-    dens_grad = density_gradient(encl_mass, dens, rad, press_temp_deriv, temp_grad, press_dens_deriv)
-    mass_grad = mass_gradient(rad, dens)
-    lum_grad = luminosity_gradient(dens, rad, eps)
-    opt_dep_grad = optical_depth_gradient(opac, dens)
-    return [dens_grad, temp_grad, mass_grad, lum_grad, opt_dep_grad]
+    
+
+# Checks by checking gradient
+r_vals = rad_vals
+p_vals = dens_vals
+T_vals = temp_vals; dTdr_vals_gradient = np.gradient(T_vals, r_vals)
+K_vals = opac_vals
+E_vals = eps_vals
+P_vals = press_vals
+M_vals = encl_mass_vals
+L_vals = lum_vals
+dtdr_vals_computed = opt_depth_grad_vals
+t_vals = opt_depth_vals
+dmdr_vals_computed = mass_grad_vals
+dLdr_vals_computed = lum_grad_vals
+dTdr_vals_computed = temp_grad_vals
+dpdr_vals_computed = dens_grad_vals
+
+
+# Goes through and makes new copies of the list
+dpdr_vals_from_data = np.zeros(N_steps)
+dTdr_vals_from_data = np.zeros(N_steps)
+dmdr_vals_from_data = np.zeros(N_steps)
+dLdr_vals_from_data = np.zeros(N_steps)
+dtdr_vals_from_data = np.zeros(N_steps)
+
+for j in range(N_steps):
+    dpdr_vals_from_data[j] = -(grav_const*M_vals[j]*p_vals[j]/r_vals[j]**2 + \
+                               pressure_temperature_derivative(p_vals[j], T_vals[j])*dTdr_vals_gradient[j])/pressure_density_derivative(p_vals[j], T_vals[j])
+    dTdr_vals_from_data[j] = -min(3*K_vals[j]*p_vals[j]*L_vals[j]/(16*np.pi*a_const*speed_light*T_vals[j]**3*r_vals[j]**2), (1- 3/5)*T_vals[j]*grav_const*M_vals[j]*p_vals[j]/(P_vals[j]*r_vals[j]**2))
+    dmdr_vals_from_data[j] = 4*np.pi*r_vals[j]**2*p_vals[j]
+    dLdr_vals_from_data[j] = 4*np.pi*r_vals[j]**2*p_vals[j]*E_vals[j]
+    dtdr_vals_from_data[j] = K_vals[j]*p_vals[j]
+    
+    
+fig, ax = plt.subplots(dpi=300)
+ax.plot(r_vals, dtdr_vals_computed, 'g-')
+ax.plot(r_vals, dtdr_vals_from_data, 'r-')
 
 
 
-# Iterates through using Runge Kutta method
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
 
 drad = 10**4
-rad = 1
+rad = drad
 
 dens = 5.856*10**4
 temp = 8.23*10**6
@@ -165,8 +270,5 @@ for i in range(N_steps):
     dens_grad = density_gradient(encl_mass, dens, rad, pressure_temperature_derivative(dens, temp),
                                  temp_grad, pressure_density_derivative(dens, temp)); dens_grad_vals.append(dens_grad)
     opt_dep_grad = optical_depth_gradient(opac, dens); opt_dep_grad_vals.append(opt_dep_grad)
+"""
 
-#%%
-
-fig1, ax1 = plt.subplots(dpi=300)
-ax1.plot(rad_vals, temp_vals)

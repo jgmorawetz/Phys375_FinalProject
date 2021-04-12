@@ -201,7 +201,7 @@ def Opacity(p, T):
     kes = 0.02*(1 + X)
     kff = 1.0*10**24*(Z + 0.0001)*((p/10**3)**0.7)*(T**-3.5)
     kH = 2.5*10**-32*(Z/0.02)*((p/10**3)**0.5)*(T**9)
-    opacity_term = 1/np.max([kes, kff]) + 1/kH
+    opacity_term = 1/max(kes, kff) + 1/kH
     total_opacity = opacity_term**-1
     return total_opacity
     
