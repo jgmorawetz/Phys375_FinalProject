@@ -316,7 +316,7 @@ def All_Gradients(r, all_variables):
         The radius.
     all_variables : LIST of FLOAT
         The list containing density, temperature, enclosed mass,
-        luminosity and optical depth.
+        luminosity, optical depth and angular velocity.
 
     Returns
     -------
@@ -324,18 +324,18 @@ def All_Gradients(r, all_variables):
         The list containing the gradient values.
 
     '''
-    p, T, M, L, t = all_variables
+    p, T, M, L, t, w = all_variables
     P = Pressure(p, T)
     K = Opacity(p, T)
     E = Energy_Generation_Rate(p, T)
     dPdp = Pressure_Density_Derivative(p, T)
     dPdT = Pressure_Temperature_Derivative(p, T)
-    dTdr = Temperature_Gradient(p, r, T, L, P, K, M, 0)
-    dpdr = Density_Gradient(p, r, M, dPdT, dTdr, dPdp, 0)
+    dTdr = Temperature_Gradient(p, r, T, L, P, K, M, w)
+    dpdr = Density_Gradient(p, r, M, dPdT, dTdr, dPdp, w)
     dMdr = Mass_Gradient(p, r)
     dLdr = Luminosity_Gradient(p, r, E)
     dtdr = Optical_Depth_Gradient(K, p)
-    return [dpdr, dTdr, dMdr, dLdr, dtdr]
+    return [dpdr, dTdr, dMdr, dLdr, dtdr, w]
     
       
  
@@ -346,6 +346,7 @@ dr = 7*10**4
 
 # Initial values
 r = dr
+w = 0
 p = 5.856*10**4
 T = 8.23*10**6
 M = 4*np.pi/3*(r**3)*p
@@ -380,7 +381,7 @@ dpdr_vals = np.zeros(N_steps); dpdr_vals[0] = dpdr
 dtdr_vals = np.zeros(N_steps); dtdr_vals[0] = dtdr
 
 # Initiates the Runge Kutta sequences
-RK_obj = RK45(All_Gradients, r, [p, T, M, L, t], max_step=dr, 
+RK_obj = RK45(All_Gradients, r, [p, T, M, L, t, w], max_step=dr, 
               t_bound=10**12)
 
 for i in range(1, N_steps):
@@ -398,9 +399,9 @@ for i in range(1, N_steps):
     P = Pressure(p, T); P_vals[i] = P
     dMdr = Mass_Gradient(p, r); dMdr_vals[i] = dMdr
     dLdr = Luminosity_Gradient(p, r, E); dLdr_vals[i] = dLdr
-    dTdr = Temperature_Gradient(p, r, T, L, P, K, M, 0); dTdr_vals[i] = dTdr
+    dTdr = Temperature_Gradient(p, r, T, L, P, K, M, w); dTdr_vals[i] = dTdr
     dpdr = Density_Gradient(p, r, M, Pressure_Temperature_Derivative(p, T),
-                        dTdr, Pressure_Density_Derivative(p, T), 0); dpdr_vals[i] = dpdr
+                        dTdr, Pressure_Density_Derivative(p, T), w); dpdr_vals[i] = dpdr
     dtdr = Optical_Depth_Gradient(K, p); dtdr_vals[i] = dtdr
 
 Radius = 602334100
