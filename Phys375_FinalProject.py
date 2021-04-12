@@ -25,10 +25,10 @@ sigma = 5.670*10**-8 # Stefan Boltzmann
 c = 3.0*10**8 # Speed of Light
 a = 4*sigma/c
 gamma = 5/3 # Adiabatic index
-X = 0.73 # Mass Fraction of Hydrogen
+X = 0.7 # Mass Fraction of Hydrogen
 XCNO = 0.03*X # Mass Fraction of CNO
-Y = 0.25 # Mass Fraction of Helium
-Z = 0.02 # Mass Fraction of Other Metals
+Z = 0.034042836 # Mass Fraction of Other Metals
+Y = 1-X-Z # Mass Fraction of Helium
 mu = (2*X + 0.75*Y + 0.5*Z)**-1 # Mean Molecular Mass
 
 
@@ -336,7 +336,7 @@ def All_Gradients(r, all_variables):
 def main():
     
     # Radius step size
-    dr = 10**5
+    dr = 10**4
     
     # Initial values
     r = dr
@@ -375,7 +375,7 @@ def main():
     RK_obj = RK45(All_Gradients, r, [p, T, M, L, t], max_step=dr, 
                   t_bound=10**12)
     
-    N_steps = 10**4
+    N_steps = 70000
     for i in range(N_steps):
         
         RK_obj.step()

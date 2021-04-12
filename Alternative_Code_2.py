@@ -20,10 +20,10 @@ reduc_planck = planck/(2*np.pi)
 mass_elec = 9.11*10**-31
 mass_prot = 1.67*10**-27
 boltz_const = 1.38*10**-23
-X = 0.73
+X = 0.7
 XCNO = 0.03*X
-Y = 0.25
-Z = 0.02
+Z = 0.034042836
+Y = 1-X-Z
 mu = (2*X + 0.75*Y + 0.5*Z)**-1
 
 
@@ -185,8 +185,10 @@ for j in range(N_steps):
     
     
 fig, ax = plt.subplots(dpi=300)
-ax.plot(r_vals, dtdr_vals_computed, 'g-')
-ax.plot(r_vals, dtdr_vals_from_data, 'r-')
+ax.plot(r_vals, K_vals, 'g-')
+
+#ax.set_yscale('log')
+#ax.plot(r_vals, dtdr_vals_from_data, 'r-')
 
 
 
