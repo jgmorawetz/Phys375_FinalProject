@@ -278,3 +278,463 @@ for i in range(N_steps):
     opt_dep_grad = optical_depth_gradient(opac, dens); opt_dep_grad_vals.append(opt_dep_grad)
 """
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
+"""
+# Iterates through each omega, and then within that different temperatures
+# along the main sequence, and then within that, different starting values
+# of pc to see which gives the required surface conditions
+for omega in [0]:
+    for Tc in [8.23*10**6]:
+        pc_test = 58560
+        # some while statement goes here to account for shooting method trial
+        r = dr
+        w = omega
+        p = pc_test
+        T = Tc
+        M = 4*np.pi/3*(r**2)*p
+        E = Energy_Generation_Rate(p, T)
+        L = 4*np.pi/3*(r**3)*p*E
+        K = Opacity(p, T)
+        P = Pressure(p, T)
+        dMdr = Mass_Gradient(p, r)
+        dLdr = Luminosity_Gradient(p, r, E)
+        dTdr = Temperature_Gradient(p, r, T, L, P, K, M, 0)
+        dpdr = Density_Gradient(p, r, M, Pressure_Temperature_Derivative(p, T),
+                                dTdr, Pressure_Density_Derivative(p, T), 0)
+        dtdr = Optical_Depth_Gradient(K, p)
+        t = dtdr*dr
+        
+        # Initiates the lists
+        N_steps = 10000
+        
+        r_vals = np.zeros(N_steps); r_vals[0] = r
+        p_vals = np.zeros(N_steps); p_vals[0] = p
+        T_vals = np.zeros(N_steps); T_vals[0] = T
+        M_vals = np.zeros(N_steps); M_vals[0] = M
+        L_vals = np.zeros(N_steps); L_vals[0] = L
+        K_vals = np.zeros(N_steps); K_vals[0] = K
+        E_vals = np.zeros(N_steps); E_vals[0] = E
+        P_vals = np.zeros(N_steps); P_vals[0] = P
+        t_vals = np.zeros(N_steps); t_vals[0] = t
+        dMdr_vals = np.zeros(N_steps); dMdr_vals[0] = dMdr
+        dLdr_vals = np.zeros(N_steps); dLdr_vals[0] = dLdr
+        dTdr_vals = np.zeros(N_steps); dTdr_vals[0] = dTdr
+        dpdr_vals = np.zeros(N_steps); dpdr_vals[0] = dpdr
+        dtdr_vals = np.zeros(N_steps); dtdr_vals[0] = dtdr
+        
+        # Initiates the Runge Kutta sequences
+        RK_obj = RK45(All_Gradients, r, [p, T, M, L, t, w], max_step=dr, 
+                      t_bound=10**12)
+        
+        for i in range(1, N_steps):
+            
+            RK_obj.step()
+            r = RK_obj.t; r_vals[i] = r
+            p = RK_obj.y[0]; p_vals[i] = p
+            T = RK_obj.y[1]; T_vals[i] = T
+            M = RK_obj.y[2]; M_vals[i] = M
+            L = RK_obj.y[3]; L_vals[i] = L
+            t = RK_obj.y[4]; t_vals[i] = t
+            
+            K = Opacity(p, T); K_vals[i] = K
+            E = Energy_Generation_Rate(p, T); E_vals[i] = E
+            P = Pressure(p, T); P_vals[i] = P
+            dMdr = Mass_Gradient(p, r); dMdr_vals[i] = dMdr
+            dLdr = Luminosity_Gradient(p, r, E); dLdr_vals[i] = dLdr
+            dTdr = Temperature_Gradient(p, r, T, L, P, K, M, w); dTdr_vals[i] = dTdr
+            dpdr = Density_Gradient(p, r, M, Pressure_Temperature_Derivative(p, T),
+                                dTdr, Pressure_Density_Derivative(p, T), w); dpdr_vals[i] = dpdr
+            dtdr = Optical_Depth_Gradient(K, p); dtdr_vals[i] = dtdr
+
+
+        Radius = 602334100
+        fig1, ax1 = plt.subplots(dpi=300)
+        ax1.plot(r_vals/Radius, p_vals, '-', linewidth=1)
+        ax1.set_xlabel('Radius (m)')
+        ax1.set_ylabel('Density ($kg/m^3$)')
+        ax1.set_xlim(0, 1.01)
+        fig1.suptitle('Density vs Radius', weight='bold')
+        ax1.ticklabel_format(axis='both', scilimits=(0,0))
+        #ax1.set_yscale('log')
+        fig1.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Density_Radius.png"))
+        
+        fig2, ax2 = plt.subplots(dpi=300)
+        ax2.plot(r_vals/Radius, T_vals, '-', linewidth=1)
+        ax2.set_xlabel('Radius (m)')
+        ax2.set_ylabel('Temperature (K)')
+        fig2.suptitle('Temperature vs Radius', weight='bold')
+        ax2.ticklabel_format(axis='both', scilimits=(0,0))
+        ax2.set_xlim(0, 1.01)
+        #ax2.set_yscale('log')
+        fig2.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Temperature_Radius.png"))
+        
+        fig3, ax3 = plt.subplots(dpi=300)
+        ax3.plot(r_vals/Radius, E_vals, '-', linewidth=1)
+        ax3.set_xlabel('Radius (m)')
+        ax3.set_ylabel('Energy Generation Rate ($m^2/s^3$)')
+        ax3.set_xlim(0, 1.01)
+        fig3.suptitle('Energy Generation Rate vs Radius', weight='bold')
+        ax3.ticklabel_format(axis='both', scilimits=(0,0))
+        fig3.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Energy_Generation_Radius.png"))
+        
+        fig4, ax4 = plt.subplots(dpi=300)
+        ax4.plot(r_vals/Radius, K_vals, '-', linewidth=1)
+        ax4.set_xlabel('Radius (m)')
+        ax4.set_ylabel('Opacity ($m^2/kg$)')
+        ax4.set_xlim(0, 1.01)
+        fig4.suptitle('Rosseland Mean Opacity vs Radius', weight='bold')
+        ax4.ticklabel_format(axis='both', scilimits=(0,0))
+        #ax4.set_yscale('log')
+        fig4.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Opacity_Radius.png"))
+        
+        fig5, ax5 = plt.subplots(dpi=300)
+        ax5.plot(r_vals/Radius, P_vals, '-', linewidth=1)
+        ax5.set_xlabel('Radius (m)')
+        ax5.set_ylabel('Pressure ($kgm^{-1}s^{-2}$)')
+        ax5.set_xlim(0, 1.01)
+        fig5.suptitle('Pressure vs Radius', weight='bold')
+        ax5.ticklabel_format(axis='both', scilimits=(0,0))
+        fig5.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Pressure_Radius.png"))
+        
+        fig6, ax6 = plt.subplots(dpi=300)
+        ax6.plot(r_vals/Radius, M_vals, '-', linewidth=1)
+        ax6.set_xlabel('Radius (m)')
+        ax6.set_ylabel('Mass ($kg$)')
+        ax6.set_xlim(0, 1.01)
+        fig6.suptitle('Enclosed Mass vs Radius', weight='bold')
+        ax6.ticklabel_format(axis='both', scilimits=(0,0))
+        fig6.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Mass_Radius.png"))
+        
+        fig7, ax7 = plt.subplots(dpi=300)
+        ax7.plot(r_vals/Radius, L_vals, '-', linewidth=1)
+        ax7.set_xlabel('Radius (m)')
+        ax7.set_ylabel('Luminosity ($kgm^2s^{-3}$)')
+        ax7.set_xlim(0, 1.01)
+        fig7.suptitle('Luminosity vs Radius', weight='bold')
+        ax7.ticklabel_format(axis='both', scilimits=(0,0))
+        fig7.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Luminosity_Radius.png"))
+        
+        fig8, ax8 = plt.subplots(dpi=300)
+        ax8.plot(r_vals/Radius, t_vals, '-', linewidth=1)
+        ax8.set_xlabel('Radius (m)')
+        ax8.set_ylabel('Optical Depth')
+        ax8.set_xlim(0, 1.01)
+        fig8.suptitle('Optical Depth vs Radius', weight='bold')
+        ax8.ticklabel_format(axis='both', scilimits=(0,0))
+        fig8.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Optical_Depth_Radius.png"))
+        
+        fig9, ax9 = plt.subplots(dpi=300)
+        ax9.plot(r_vals/Radius, dMdr_vals, '-', linewidth=1)
+        ax9.set_xlabel('Radius (m)')
+        ax9.set_ylabel('Mass Gradient ($kg/m$)')
+        ax9.set_xlim(0, 1.01)
+        fig9.suptitle('Mass Gradient vs Radius', weight='bold')
+        ax9.ticklabel_format(axis='both', scilimits=(0,0))
+        fig9.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Mass_Gradient_Radius.png"))
+        
+        fig10, ax10 = plt.subplots(dpi=300)
+        ax10.plot(r_vals/Radius, dLdr_vals, '-', linewidth=1)
+        ax10.set_xlabel('Radius (m)')
+        ax10.set_ylabel('Luminosity Gradient ($kgms^{-3}$)')
+        ax10.set_xlim(0, 1.01)
+        fig10.suptitle('Luminosity Gradient vs Radius', weight='bold')
+        ax10.ticklabel_format(axis='both', scilimits=(0,0))
+        fig10.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Luminosity_Gradient_Radius.png"))
+        
+        fig11, ax11 = plt.subplots(dpi=300)
+        ax11.plot(r_vals/Radius, dTdr_vals, '-', linewidth=1)
+        ax11.set_xlabel('Radius (m)')
+        ax11.set_ylabel('Temperature Gradient ($K/m$)')
+        ax11.set_xlim(0, 1.01)
+        fig11.suptitle('Temperature Gradient vs Radius', weight='bold')
+        ax11.ticklabel_format(axis='both', scilimits=(0,0))
+        fig11.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Temperature_Gradient_Radius.png"))
+        
+        fig12, ax12 = plt.subplots(dpi=300)
+        ax12.plot(r_vals/Radius, dpdr_vals, '-', linewidth=1)
+        ax12.set_xlabel('Radius (m)')
+        ax12.set_ylabel('Density Gradient ($kg/m^4$)')
+        ax12.set_xlim(0, 1.01)
+        fig12.suptitle('Density Gradient vs Radius', weight='bold')
+        ax12.ticklabel_format(axis='both', scilimits=(0,0))
+        fig12.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Density_Gradient_Radius.png"))
+        
+        fig13, ax13 = plt.subplots(dpi=300)
+        ax13.plot(r_vals/Radius, dtdr_vals, '-', linewidth=1)
+        ax13.set_xlabel('Radius (m)')
+        ax13.set_ylabel('Optical Depth Gradient ($m^{-1}$)')
+        ax13.set_xlim(0, 1.01)
+        fig13.suptitle('Optical Depth Gradient vs Radius', weight='bold')
+        ax13.ticklabel_format(axis='both', scilimits=(0,0))
+        fig13.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Optical_Depth_Gradient_Radius.png"))
+"""
+
+
+
+
+
+
+
+
+
+"""
+dr = 7*10**4
+# Iterates through each omega, and then within that different temperatures
+# along the main sequence, and then within that, different starting values
+# of pc to see which gives the required surface conditions
+for omega in [0]:
+    for Tc in [8.23*10**6]:
+        pc_test = 58560
+        # some while statement goes here to account for shooting method trial
+        r = dr
+        w = omega
+        p = pc_test
+        T = Tc
+        M = 4*np.pi/3*(r**2)*p
+        E = Energy_Generation_Rate(p, T)
+        L = 4*np.pi/3*(r**3)*p*E
+        K = Opacity(p, T)
+        P = Pressure(p, T)
+        dMdr = Mass_Gradient(p, r)
+        dLdr = Luminosity_Gradient(p, r, E)
+        dTdr = Temperature_Gradient(p, r, T, L, P, K, M, 0)
+        dpdr = Density_Gradient(p, r, M, Pressure_Temperature_Derivative(p, T),
+                                dTdr, Pressure_Density_Derivative(p, T), 0)
+        dtdr = Optical_Depth_Gradient(K, p)
+        t = dtdr*dr
+        
+        # Initiates the lists
+        N_steps = 10000
+        
+        r_vals = np.zeros(N_steps); r_vals[0] = r
+        p_vals = np.zeros(N_steps); p_vals[0] = p
+        T_vals = np.zeros(N_steps); T_vals[0] = T
+        M_vals = np.zeros(N_steps); M_vals[0] = M
+        L_vals = np.zeros(N_steps); L_vals[0] = L
+        K_vals = np.zeros(N_steps); K_vals[0] = K
+        E_vals = np.zeros(N_steps); E_vals[0] = E
+        P_vals = np.zeros(N_steps); P_vals[0] = P
+        t_vals = np.zeros(N_steps); t_vals[0] = t
+        dMdr_vals = np.zeros(N_steps); dMdr_vals[0] = dMdr
+        dLdr_vals = np.zeros(N_steps); dLdr_vals[0] = dLdr
+        dTdr_vals = np.zeros(N_steps); dTdr_vals[0] = dTdr
+        dpdr_vals = np.zeros(N_steps); dpdr_vals[0] = dpdr
+        dtdr_vals = np.zeros(N_steps); dtdr_vals[0] = dtdr
+        
+        # Initiates the Runge Kutta sequences
+        RK_obj = RK45(All_Gradients, r, [p, T, M, L, t, w], max_step=dr, 
+                      t_bound=10**12)
+        
+        for i in range(1, N_steps):
+            
+            RK_obj.step()
+            r = RK_obj.t; r_vals[i] = r
+            p = RK_obj.y[0]; p_vals[i] = p
+            T = RK_obj.y[1]; T_vals[i] = T
+            M = RK_obj.y[2]; M_vals[i] = M
+            L = RK_obj.y[3]; L_vals[i] = L
+            t = RK_obj.y[4]; t_vals[i] = t
+            
+            K = Opacity(p, T); K_vals[i] = K
+            E = Energy_Generation_Rate(p, T); E_vals[i] = E
+            P = Pressure(p, T); P_vals[i] = P
+            dMdr = Mass_Gradient(p, r); dMdr_vals[i] = dMdr
+            dLdr = Luminosity_Gradient(p, r, E); dLdr_vals[i] = dLdr
+            dTdr = Temperature_Gradient(p, r, T, L, P, K, M, w); dTdr_vals[i] = dTdr
+            dpdr = Density_Gradient(p, r, M, Pressure_Temperature_Derivative(p, T),
+                                dTdr, Pressure_Density_Derivative(p, T), w); dpdr_vals[i] = dpdr
+            dtdr = Optical_Depth_Gradient(K, p); dtdr_vals[i] = dtdr
+
+
+        Radius = 602334100
+        fig1, ax1 = plt.subplots(dpi=300)
+        ax1.plot(r_vals/Radius, p_vals, '-', linewidth=1)
+        ax1.set_xlabel('Radius (m)')
+        ax1.set_ylabel('Density ($kg/m^3$)')
+        ax1.set_xlim(0, 1.01)
+        fig1.suptitle('Density vs Radius', weight='bold')
+        ax1.ticklabel_format(axis='both', scilimits=(0,0))
+        #ax1.set_yscale('log')
+        fig1.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Density_Radius.png"))
+        
+        fig2, ax2 = plt.subplots(dpi=300)
+        ax2.plot(r_vals/Radius, T_vals, '-', linewidth=1)
+        ax2.set_xlabel('Radius (m)')
+        ax2.set_ylabel('Temperature (K)')
+        fig2.suptitle('Temperature vs Radius', weight='bold')
+        ax2.ticklabel_format(axis='both', scilimits=(0,0))
+        ax2.set_xlim(0, 1.01)
+        #ax2.set_yscale('log')
+        fig2.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Temperature_Radius.png"))
+        
+        fig3, ax3 = plt.subplots(dpi=300)
+        ax3.plot(r_vals/Radius, E_vals, '-', linewidth=1)
+        ax3.set_xlabel('Radius (m)')
+        ax3.set_ylabel('Energy Generation Rate ($m^2/s^3$)')
+        ax3.set_xlim(0, 1.01)
+        fig3.suptitle('Energy Generation Rate vs Radius', weight='bold')
+        ax3.ticklabel_format(axis='both', scilimits=(0,0))
+        fig3.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Energy_Generation_Radius.png"))
+        
+        fig4, ax4 = plt.subplots(dpi=300)
+        ax4.plot(r_vals/Radius, K_vals, '-', linewidth=1)
+        ax4.set_xlabel('Radius (m)')
+        ax4.set_ylabel('Opacity ($m^2/kg$)')
+        ax4.set_xlim(0, 1.01)
+        fig4.suptitle('Rosseland Mean Opacity vs Radius', weight='bold')
+        ax4.ticklabel_format(axis='both', scilimits=(0,0))
+        #ax4.set_yscale('log')
+        fig4.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Opacity_Radius.png"))
+        
+        fig5, ax5 = plt.subplots(dpi=300)
+        ax5.plot(r_vals/Radius, P_vals, '-', linewidth=1)
+        ax5.set_xlabel('Radius (m)')
+        ax5.set_ylabel('Pressure ($kgm^{-1}s^{-2}$)')
+        ax5.set_xlim(0, 1.01)
+        fig5.suptitle('Pressure vs Radius', weight='bold')
+        ax5.ticklabel_format(axis='both', scilimits=(0,0))
+        fig5.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Pressure_Radius.png"))
+        
+        fig6, ax6 = plt.subplots(dpi=300)
+        ax6.plot(r_vals/Radius, M_vals, '-', linewidth=1)
+        ax6.set_xlabel('Radius (m)')
+        ax6.set_ylabel('Mass ($kg$)')
+        ax6.set_xlim(0, 1.01)
+        fig6.suptitle('Enclosed Mass vs Radius', weight='bold')
+        ax6.ticklabel_format(axis='both', scilimits=(0,0))
+        fig6.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Mass_Radius.png"))
+        
+        fig7, ax7 = plt.subplots(dpi=300)
+        ax7.plot(r_vals/Radius, L_vals, '-', linewidth=1)
+        ax7.set_xlabel('Radius (m)')
+        ax7.set_ylabel('Luminosity ($kgm^2s^{-3}$)')
+        ax7.set_xlim(0, 1.01)
+        fig7.suptitle('Luminosity vs Radius', weight='bold')
+        ax7.ticklabel_format(axis='both', scilimits=(0,0))
+        fig7.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Luminosity_Radius.png"))
+        
+        fig8, ax8 = plt.subplots(dpi=300)
+        ax8.plot(r_vals/Radius, t_vals, '-', linewidth=1)
+        ax8.set_xlabel('Radius (m)')
+        ax8.set_ylabel('Optical Depth')
+        ax8.set_xlim(0, 1.01)
+        fig8.suptitle('Optical Depth vs Radius', weight='bold')
+        ax8.ticklabel_format(axis='both', scilimits=(0,0))
+        fig8.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Optical_Depth_Radius.png"))
+        
+        fig9, ax9 = plt.subplots(dpi=300)
+        ax9.plot(r_vals/Radius, dMdr_vals, '-', linewidth=1)
+        ax9.set_xlabel('Radius (m)')
+        ax9.set_ylabel('Mass Gradient ($kg/m$)')
+        ax9.set_xlim(0, 1.01)
+        fig9.suptitle('Mass Gradient vs Radius', weight='bold')
+        ax9.ticklabel_format(axis='both', scilimits=(0,0))
+        fig9.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Mass_Gradient_Radius.png"))
+        
+        fig10, ax10 = plt.subplots(dpi=300)
+        ax10.plot(r_vals/Radius, dLdr_vals, '-', linewidth=1)
+        ax10.set_xlabel('Radius (m)')
+        ax10.set_ylabel('Luminosity Gradient ($kgms^{-3}$)')
+        ax10.set_xlim(0, 1.01)
+        fig10.suptitle('Luminosity Gradient vs Radius', weight='bold')
+        ax10.ticklabel_format(axis='both', scilimits=(0,0))
+        fig10.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Luminosity_Gradient_Radius.png"))
+        
+        fig11, ax11 = plt.subplots(dpi=300)
+        ax11.plot(r_vals/Radius, dTdr_vals, '-', linewidth=1)
+        ax11.set_xlabel('Radius (m)')
+        ax11.set_ylabel('Temperature Gradient ($K/m$)')
+        ax11.set_xlim(0, 1.01)
+        fig11.suptitle('Temperature Gradient vs Radius', weight='bold')
+        ax11.ticklabel_format(axis='both', scilimits=(0,0))
+        fig11.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Temperature_Gradient_Radius.png"))
+        
+        fig12, ax12 = plt.subplots(dpi=300)
+        ax12.plot(r_vals/Radius, dpdr_vals, '-', linewidth=1)
+        ax12.set_xlabel('Radius (m)')
+        ax12.set_ylabel('Density Gradient ($kg/m^4$)')
+        ax12.set_xlim(0, 1.01)
+        fig12.suptitle('Density Gradient vs Radius', weight='bold')
+        ax12.ticklabel_format(axis='both', scilimits=(0,0))
+        fig12.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Density_Gradient_Radius.png"))
+        
+        fig13, ax13 = plt.subplots(dpi=300)
+        ax13.plot(r_vals/Radius, dtdr_vals, '-', linewidth=1)
+        ax13.set_xlabel('Radius (m)')
+        ax13.set_ylabel('Optical Depth Gradient ($m^{-1}$)')
+        ax13.set_xlim(0, 1.01)
+        fig13.suptitle('Optical Depth Gradient vs Radius', weight='bold')
+        ax13.ticklabel_format(axis='both', scilimits=(0,0))
+        fig13.savefig(os.path.join(os.path.abspath(
+                r"C:\Users\James\Documents\GitHub\Phys375_FinalProject\Final_Plots"),
+                "Optical_Depth_Gradient_Radius.png"))
+"""
+    
+
