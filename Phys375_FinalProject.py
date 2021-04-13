@@ -372,7 +372,7 @@ def Trial_Error(omega, Tc, pc_test):
     L = M*E
     t = Optical_Depth_Gradient(Opacity(p, T), p)
     
-    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 20000*dr), y0=[p,T,M,L,t,w],
+    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 10000*dr), y0=[p,T,M,L,t,w],
                      method='RK45', first_step=dr, max_step=dr) # allow for various step sizes
     
     r_vals = soln.t
@@ -418,14 +418,14 @@ def Trial_Error(omega, Tc, pc_test):
 lst_values = []
 
 for omega in [0]:
-    for Tc in [4*10**6]:#5*10**6, 2*10**7]:#, 1*10**6, 5*10**6, 1.5*10**7]: #np.logspace(start=5.5, stop=7.5, num=20, base=10):
+    for Tc in [1.2*10**7]:#5*10**6, 2*10**7]:#, 1*10**6, 5*10**6, 1.5*10**7]: #np.logspace(start=5.5, stop=7.5, num=20, base=10):
         pc_low = 0.3*1000
         pc_up = 500*1000
         try:
             Trial_Error(omega, Tc, pc_low) # Case where is competely convective in all trial densities
             Trial_Error(omega, Tc, pc_up)
             
-            while abs(pc_up-pc_low) > 0.000000001:
+            while abs(pc_up-pc_low) > 0.0000000001:
                 pc_guess = (pc_low + pc_up)/2
                 pc_guess_values = Trial_Error(omega, Tc, pc_guess)
                 pc_guess_error = pc_guess_values[0]
@@ -435,7 +435,7 @@ for omega in [0]:
                     pc_up = pc_guess
         
         except UnboundLocalError: # indicates that pc_guess is too low (radiative solution) doesn't take into account if no convection zone at surface
-            while abs(pc_up-pc_low) > 0.00000001: # tolerance for narrowing down to density
+            while abs(pc_up-pc_low) > 0.00000000001: # tolerance for narrowing down to density
                 pc_guess = (pc_low + pc_up)/2
                 try: # pc_guess is not too low but could be lower
                     Trial_Error(omega, Tc, pc_guess)
@@ -445,7 +445,7 @@ for omega in [0]:
                     # Once it has the approximate pc boundary after which it diverges, it then uses bisection to find actual solution
             pc_low = pc_up
             pc_up = 500*1000
-            while abs(pc_up-pc_low) > 0.000000001:
+            while abs(pc_up-pc_low) > 0.0000000001:
                 pc_guess = (pc_low + pc_up)/2
                 pc_guess_values = Trial_Error(omega, Tc, pc_guess)
                 pc_guess_error = pc_guess_values[0]
