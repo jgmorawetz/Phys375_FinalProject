@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Mar 30 12:39:44 2021
-
 @author: James
+Last edited by: Aditya Jaypal
+Last edited: Mon Apr 12 11:59:35 2021
 """
 
 
@@ -10,8 +11,6 @@ Created on Tue Mar 30 12:39:44 2021
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-from scipy.optimize import bisect
-from scipy.interpolate import interp1d
 
 
 
@@ -26,33 +25,36 @@ sigma = 5.670*10**-8 # Stefan Boltzmann
 c = 3.0*10**8 # Speed of Light
 a = 4*sigma/c
 gamma = 5/3 # Adiabatic index
-dr = 7*10**4 # Radius step size
 
 
-X = 0.7 # Mass Fraction of Hydrogens
+X = 0.7 # Mass Fraction of Hydrogen
 XCNO = 0.03*X # Mass Fraction of CNO
-Z = 0.03 # Mass Fraction of Other Metals
+Z = 0.0341121074#0.0341120611 # Mass Fraction of Other Metals
 Y = 1-X-Z # Mass Fraction of Helium
 mu = (2*X + 0.75*Y + 0.5*Z)**-1 # Mean Molecular Mass
+temp_list = [8.23*10**6, 1*10**6, 16*10**6]
 
+true_r_vals = 0
+true_p_vals = 0
+true_T_vals = 0
+true_M_vals = 0
+true_L_vals = 0
+true_t_vals = 0
 
 
 def Mass_Gradient(p, r):
     '''
     computes the mass gradient in terms of the density and radius
-
     Parameters
     ----------
     p : FLOAT
         The density.
     r : FLOAT
         The radius.
-
     Returns
     -------
     mass_gradient : FLOAT
         The mass gradient.
-
     '''
     mass_gradient = 4*np.pi*(r**2)*p
     return mass_gradient
@@ -63,7 +65,6 @@ def Luminosity_Gradient(p, r, E):
     '''
     computes the gradient of luminosity in terms of the density, radius and
     energy generation rate
-
     Parameters
     ----------
     p : FLOAT
@@ -72,12 +73,10 @@ def Luminosity_Gradient(p, r, E):
         The radius.
     E : FLOAT
         The energy generation rate.
-
     Returns
     -------
     luminosity_gradient : FLOAT
         The gradient of luminosity.
-
     '''
     luminosity_gradient = 4*np.pi*(r**2)*p*E
     return luminosity_gradient
@@ -87,19 +86,16 @@ def Luminosity_Gradient(p, r, E):
 def Pressure(p, T):
     '''
     computes the pressure in terms of the density and temperature
-
     Parameters
     ----------
     p : FLOAT
         The density.
     T : FLOAT
         The temperature.
-
     Returns
     -------
     pressure : FLOAT
         The pressure.
-
     '''
     first_term = (3*np.pi**2)**(2/3)/5*(hbar**2)/me*(p/mp)**(5/3)
     second_term = p*k*T/(mu*mp)
@@ -113,19 +109,16 @@ def Pressure_Density_Derivative(p, T):
     '''
     computes the partial derivative of pressure with respect to density, in
     terms of density and temperature
-
     Parameters
     ----------
     p : FLOAT
         The density.
     T : FLOAT
         The temperature.
-
     Returns
     -------
     pressure_density_derivative : FLOAT
         The partial derivative of pressure with respect to density.
-
     '''
     first_term = (3*np.pi**2)**(2/3)/3*(hbar**2)/(me*mp)*(p/mp)**(2/3)
     second_term = k*T/(mu*mp)
@@ -138,19 +131,16 @@ def Pressure_Temperature_Derivative(p, T):
     '''
     computes the partial derivative of pressure with respect to temperature,
     in terms of density and temperature
-
     Parameters
     ----------
     p : FLOAT
         The density.
     T : FLOAT
         The temperature.
-
     Returns
     -------
     pressure_temp_deriv : FLOAT
         The partial derivative of pressure with respect to temperature.
-
     '''
     first_term = p*k/(mu*mp)
     second_term = 4/3*a*(T**3)
@@ -163,19 +153,16 @@ def Energy_Generation_Rate(p, T):
     '''
     computes the total energy generation rate, including the PP-chain and 
     the CNO cycle, in terms of the density and temperature
-
     Parameters
     ----------
     p : FLOAT
         The density.
     T : FLOAT
         The temperature.
-
     Returns
     -------
     energy_gen_rate : FLOAT
         The total energy generation rate.
-
     '''
     PP_rate = 1.07*10**-7*(p/10**5)*(X**2)*(T/10**6)**4
     CNO_rate = 8.24*10**-26*(p/10**5)*X*XCNO*(T/10**6)**19.9
@@ -188,19 +175,16 @@ def Opacity(p, T):
     '''
     computes the total Rosseland mean opacity in terms of density
     and temperature
-
     Parameters
     ----------
     p : FLOAT
         The density.
     T : FLOAT
         The temperature.
-
     Returns
     -------
     total_opacity : FLOAT
         The Rosseland mean opacity.
-
     '''
     kes = 0.02*(1 + X)
     kff = 1.0*10**24*(Z + 0.0001)*((p/10**3)**0.7)*(T**-3.5)
@@ -215,19 +199,16 @@ def Optical_Depth_Gradient(K, p):
     '''
     computes the gradient of optical depth in terms of Rosseland mean
     opacity and the density
-
     Parameters
     ----------
     K : FLOAT
         The Rosseland mean opacity.
     p : FLOAT
         The density.
-
     Returns
     -------
     optical_depth_gradient : FLOAT
         The gradient of optical depth.
-
     '''
     optical_depth_gradient = K*p
     return optical_depth_gradient
@@ -238,7 +219,6 @@ def Temperature_Gradient(p, r, T, L, P, K, M, w):
     '''
     computes the temperature gradient in terms of the density, radius, 
     temperature, luminosity, pressure, opacity, and enclosed mass
-
     Parameters
     ----------
     p : FLOAT
@@ -257,12 +237,10 @@ def Temperature_Gradient(p, r, T, L, P, K, M, w):
         The enclosed mass.
     w : FLOAT
         The angular velocity (omega).
-
     Returns
     -------
     temperature_gradient : FLOAT
         The gradient of temperature.
-
     '''
     first_term = 3*K*p*L/(16*np.pi*a*c*(T**3)*(r**2))
     geff = G*M/(r**2) - 2/3*(w**2)*r
@@ -277,7 +255,6 @@ def Density_Gradient(p, r, M, dPdT, dTdr, dPdp, w):
     mass, partial derivative of pressure with respect to temperature, the 
     temperature gradient and the partial derivative of pressure with respect
     to density
-
     Parameters
     ----------
     p : FLOAT
@@ -294,12 +271,10 @@ def Density_Gradient(p, r, M, dPdT, dTdr, dPdp, w):
         The partial derivative of pressure with respect to density.
     w : FLOAT
         The angular velocity (omega).
-
     Returns
     -------
     density_gradient : FLOAT
         The gradient of density.
-
     '''
     geff = G*M/(r**2) - 2/3*(w**2)*r
     numerator = geff*p + dPdT*dTdr
@@ -321,12 +296,10 @@ def All_Gradients(r, all_variables):
     all_variables : LIST of FLOAT
         The list containing density, temperature, enclosed mass,
         luminosity, optical depth and angular velocity.
-
     Returns
     -------
     gradient_list : LIST of FLOAT
         The list containing the gradient values.
-
     '''
     p, T, M, L, t, w = all_variables
     P = Pressure(p, T)
@@ -343,110 +316,75 @@ def All_Gradients(r, all_variables):
 
 
 
-def Opacity_Proxy(i, p_vals, dpdr_vals, T_vals):
+def Tau_Check(radii, value_list):
     '''
-    computes the value of the opacity proxy at that index corresponding to 
-    a particular density and temperature
-
-    Parameters
-    ----------
-    i : INT
-        The index within the arrays of interest.
-    p_vals : NP.ARRAY
-        The full list of density values.
-    dpdr_vals : NP.ARRAY
-        The full list of density gradient values.
-    T_vals : NP.ARRAY
-        The full list of temperature values.
-    
-    Returns
-    -------
-    proxy_value : FLOAT
-        The opacity proxy value.
-
+    Basically creates a redundant set of variables to iterate and look for the radius where the tau thingy gets satisfied
     '''
-    dens = p_vals[i]
-    temp = T_vals[i]
-    opac = Opacity(dens, temp)
-    dens_grad = dpdr_vals[i]
-    return opac*(dens**2)/abs(dens_grad)
+    t_s = value_list[4]
+    p_s = value_list[0]
+    T_s = value_list[1]
+    M_s = value_list[2]
+    L_s = value_list[3]
+    w = 0
+    
+    for i in range(len(t_s)):
+        P_s = Pressure(p_s[len(t_s) - 1 - i], T_s[len(t_s) - 1 - i])
+        K_s = Opacity(p_s[len(t_s) - 1 - i], T_s[len(t_s) - 1 - i])
+        E_s = Energy_Generation_Rate(p_s[len(t_s) - 1 - i], T_s[len(t_s) - 1 - i])
+        dPdp_s = Pressure_Density_Derivative(p_s[len(t_s) - 1 - i], T_s[len(t_s) - 1 - i])
+        dPdT_s = Pressure_Temperature_Derivative(p_s[len(t_s) - 1 - i], T_s[len(t_s) - 1 - i])
+        dTdr_s = Temperature_Gradient(p_s[len(t_s) - 1 - i], radii[len(t_s) - 1 - i], T_s[len(t_s) - 1 - i], L_s[len(t_s) - 1 - i], P_s, K_s, M_s[len(t_s) - 1 - i], w)
+        dpdr_s = Density_Gradient(p_s[len(t_s) - 1 - i], radii[len(t_s) - 1 - i], M_s[len(t_s) - 1 - i], dPdT_s, dTdr_s, dPdp_s, w)
+        
+        if(dpdr_s != 0 and ((K_s*(p_s[len(t_s) - 1 - i]**2))/abs(dpdr_s)) < 0.1 and ((K_s*(p_s[len(t_s) - 1 - i]**2))/abs(dpdr_s)) > 0.00000000000000000001):
+            true_r_vals = radii[:len(t_s) - i]
+            true_p_vals = p_s[:len(t_s) - i]
+            true_T_vals = T_s[:len(t_s) - i]
+            true_M_vals = M_s[:len(t_s) - i]
+            true_L_vals = L_s[:len(t_s) - i]
+            true_t_vals = t_s[:len(t_s) - i] 
+            print(i, ((K_s*(p_s[len(t_s) - 1 - i]**2))/abs(dpdr_s)))
+            break
+    
+    return (true_r_vals, true_p_vals, true_T_vals, true_M_vals, true_L_vals, true_t_vals)
 
 
 
-Tc = 2.7*10**7#8.23544*10**6
-omega = 0
+# Radius step size
+dr = 7*10**4
 
-def Trial_Error(pc_test):
-    '''
-    runs through a trial with the initial conditions given
+p = 58560
+M = 4/3*np.pi*dr**3*p
+T = 8.23*10**6
+E = Energy_Generation_Rate(p, T)
+L = M*E
+t = Optical_Depth_Gradient(Opacity(p, T), p)
+w = 0
 
-    Parameters
-    ----------
-    omega : FLOAT
-        The angular velocity.
-    Tc : FLOAT
-        The central temperature (main sequence parameter).
-    pc_test : FLOAT
-        The test value of central density (trial parameter).
+soln = solve_ivp(fun=All_Gradients, t_span=(dr, 10000*dr), y0=[p, T, M, L, t, w], first_step=dr, max_step=dr)
 
-    Returns
-    -------
-    error : FLOAT
-        The error from the current trial.
+print("Integration complete. Checking for Tau at infinity:")
 
-    '''
-    
-    p = pc_test
-    T = Tc
-    w = omega
-    M = 4/3*np.pi*(dr**3)*p
-    E = Energy_Generation_Rate(p, T)
-    L = M*E
-    t = Optical_Depth_Gradient(Opacity(p, T), p)
-    
-    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 50000*dr),
-                     y0=[p, T, M, L, t, w], first_step=dr, max_step=dr)
-    
-    r_vals = soln.t
-   # p_vals = soln.y[0]
-   # dpdr_vals = np.gradient(p_vals, r_vals)
-    T_vals = soln.y[1]
-  #  M_vals = soln.y[2]
-    L_vals = soln.y[3]
-    t_vals = soln.y[4]
-    
-    tau_inf = t_vals[-1] # MUST CHANGE LATER TO ACTUALLY USE PROXY BUT FINE FOR NOW
-    delta_tau = [abs(tau_inf-t_vals[i]) for i in range(len(t_vals))]
-    
-    interp_func = interp1d(delta_tau, list(range(len(r_vals))), kind='nearest')
-    surf_ind = int(interp_func(2/3))
-    surf_radius = r_vals[surf_ind]
-    surf_luminosity = L_vals[surf_ind]
-    surf_temp = T_vals[surf_ind]
-    theoretical_luminosity = 4*np.pi*sigma*(surf_radius**2)*(surf_temp**4)
-    norm_factor = np.sqrt(theoretical_luminosity*surf_luminosity)
-    return (surf_luminosity-theoretical_luminosity)/norm_factor
-    
+true_vals = Tau_Check(soln.t, soln.y) 
 
+true_r_vals = true_vals[0]
+true_p_vals = true_vals[1]
+true_T_vals = true_vals[2]
+true_M_vals = true_vals[3]
+true_L_vals = true_vals[4]
+true_t_vals = true_vals[5]
 
-pc_soln = bisect(Trial_Error, 0.3*1000, 500*1000, xtol=0.01)
+r_vals = soln.t
+p_vals = soln.y[0]
+T_vals = soln.y[1]
+M_vals = soln.y[2]
+L_vals = soln.y[3]
+t_vals = soln.y[4]
 
 
 
+fig, ax = plt.subplots(dpi=300)
+ax.plot(true_r_vals/601607500, true_T_vals/(8.23*10**6), '-')
 
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+fig2, ax2 = plt.subplots(dpi=300)
+ax2.plot(true_r_vals/601607500, true_t_vals)
