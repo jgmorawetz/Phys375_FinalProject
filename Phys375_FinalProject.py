@@ -10,6 +10,8 @@ Created on Tue Mar 30 12:39:44 2021
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
+from scipy.optimize import bisect
+from scipy.interpolate import interp1d
 
 
 
@@ -24,11 +26,12 @@ sigma = 5.670*10**-8 # Stefan Boltzmann
 c = 3.0*10**8 # Speed of Light
 a = 4*sigma/c
 gamma = 5/3 # Adiabatic index
+dr = 7*10**4 # Radius step size
 
 
-X = 0.7 # Mass Fraction of Hydrogen
+X = 0.7 # Mass Fraction of Hydrogens
 XCNO = 0.03*X # Mass Fraction of CNO
-Z = 0.0341121074#0.0341120611 # Mass Fraction of Other Metals
+Z = 0.03 # Mass Fraction of Other Metals
 Y = 1-X-Z # Mass Fraction of Helium
 mu = (2*X + 0.75*Y + 0.5*Z)**-1 # Mean Molecular Mass
 
@@ -340,43 +343,93 @@ def All_Gradients(r, all_variables):
 
 
 
+def Opacity_Proxy(i, p_vals, dpdr_vals, T_vals):
+    '''
+    computes the value of the opacity proxy at that index corresponding to 
+    a particular density and temperature
+
+    Parameters
+    ----------
+    i : INT
+        The index within the arrays of interest.
+    p_vals : NP.ARRAY
+        The full list of density values.
+    dpdr_vals : NP.ARRAY
+        The full list of density gradient values.
+    T_vals : NP.ARRAY
+        The full list of temperature values.
+    
+    Returns
+    -------
+    proxy_value : FLOAT
+        The opacity proxy value.
+
+    '''
+    dens = p_vals[i]
+    temp = T_vals[i]
+    opac = Opacity(dens, temp)
+    dens_grad = dpdr_vals[i]
+    return opac*(dens**2)/abs(dens_grad)
 
 
 
-# Radius step size
-dr = 7*10**4
+Tc = 2.7*10**7#8.23544*10**6
+omega = 0
 
-p = 58560
-M = 4/3*np.pi*dr**3*p
-T = 8.23*10**6
-E = Energy_Generation_Rate(p, T)
-L = M*E
-t = Optical_Depth_Gradient(Opacity(p, T), p)
-w = 0
+def Trial_Error(pc_test):
+    '''
+    runs through a trial with the initial conditions given
 
+    Parameters
+    ----------
+    omega : FLOAT
+        The angular velocity.
+    Tc : FLOAT
+        The central temperature (main sequence parameter).
+    pc_test : FLOAT
+        The test value of central density (trial parameter).
 
-soln = solve_ivp(fun=All_Gradients, t_span=(dr, 10000*dr), y0=[p, T, M, L, t, w],
-                 first_step=dr, max_step=dr)
+    Returns
+    -------
+    error : FLOAT
+        The error from the current trial.
+
+    '''
+    
+    p = pc_test
+    T = Tc
+    w = omega
+    M = 4/3*np.pi*(dr**3)*p
+    E = Energy_Generation_Rate(p, T)
+    L = M*E
+    t = Optical_Depth_Gradient(Opacity(p, T), p)
+    
+    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 50000*dr),
+                     y0=[p, T, M, L, t, w], first_step=dr, max_step=dr)
+    
+    r_vals = soln.t
+   # p_vals = soln.y[0]
+   # dpdr_vals = np.gradient(p_vals, r_vals)
+    T_vals = soln.y[1]
+  #  M_vals = soln.y[2]
+    L_vals = soln.y[3]
+    t_vals = soln.y[4]
+    
+    tau_inf = t_vals[-1] # MUST CHANGE LATER TO ACTUALLY USE PROXY BUT FINE FOR NOW
+    delta_tau = [abs(tau_inf-t_vals[i]) for i in range(len(t_vals))]
+    
+    interp_func = interp1d(delta_tau, list(range(len(r_vals))), kind='nearest')
+    surf_ind = int(interp_func(2/3))
+    surf_radius = r_vals[surf_ind]
+    surf_luminosity = L_vals[surf_ind]
+    surf_temp = T_vals[surf_ind]
+    theoretical_luminosity = 4*np.pi*sigma*(surf_radius**2)*(surf_temp**4)
+    norm_factor = np.sqrt(theoretical_luminosity*surf_luminosity)
+    return (surf_luminosity-theoretical_luminosity)/norm_factor
     
 
-r_vals = soln.t
-p_vals = soln.y[0]
-T_vals = soln.y[1]
-M_vals = soln.y[2]
-L_vals = soln.y[3]
-t_vals = soln.y[4]
 
-
-fig, ax = plt.subplots(dpi=300)
-ax.plot(r_vals, T_vals, '-')
-
-
-
-
-
-
-
-
+pc_soln = bisect(Trial_Error, 0.3*1000, 500*1000, xtol=0.01)
 
 
 
