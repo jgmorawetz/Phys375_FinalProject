@@ -378,6 +378,7 @@ def Trial_Error(omega, Tc, pc_test):
     r_vals = soln.t
     p_vals = soln.y[0]
     T_vals = soln.y[1]
+    M_vals = soln.y[2]
     L_vals = soln.y[3]
     t_vals = soln.y[4]
     
@@ -417,7 +418,7 @@ def Trial_Error(omega, Tc, pc_test):
 lst_values = []
 
 for omega in [0]:
-    for Tc in [5*10**6, 2*10**7]:#, 1*10**6, 5*10**6, 1.5*10**7]: #np.logspace(start=5.5, stop=7.5, num=20, base=10):
+    for Tc in [4*10**6]:#5*10**6, 2*10**7]:#, 1*10**6, 5*10**6, 1.5*10**7]: #np.logspace(start=5.5, stop=7.5, num=20, base=10):
         pc_low = 0.3*1000
         pc_up = 500*1000
         try:
@@ -458,66 +459,6 @@ for omega in [0]:
 
 
 
-
-
-#%%
-fig, ax = plt.subplots(dpi=300)
-ax.set_xlim(0, 1e9)
-T_test = 8.23544*10**6
-
-for p_test in [61345]:#[61340.02392731052]:#[61340.02383621173435]:#np.linspace(61340.01632, 61340.016354, 10):
-    p = p_test
-    T = T_test#Tc
-    w = omega
-    M = 4/3*np.pi*(dr**3)*p
-    E = Energy_Generation_Rate(p, T)
-    L = M*E
-    t = Optical_Depth_Gradient(Opacity(p, T), p)
-    
-    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 10000*dr),
-                     y0=[p, T, M, L, t, w], first_step=dr, max_step=dr)
-    
-    r_vals = soln.t
-    p_vals = soln.y[0]
-    dpdr_vals = np.gradient(p_vals, r_vals)
-    T_vals = soln.y[1]
-    K_vals = [Opacity(p_vals[i], T_vals[i]) for i in range(len(r_vals))]
-    M_vals = soln.y[2]
-    L_vals = soln.y[3]
-    t_vals = soln.y[4]
-    proxy_vals = [K_vals[i]*(p_vals[i]**2)/abs(dpdr_vals[i]) for i in range(len(r_vals))]
-    P_vals = [Pressure(p_vals[i], T_vals[i]) for i in range(len(T_vals))]
-    logP_vals = list(map(lambda x: np.log10(x), P_vals))
-    logT_vals = list(map(lambda x: np.log10(x), T_vals))
-    dlogPdlogT_vals = np.gradient(logP_vals, logT_vals)
-    tau_inf = t_vals[-1] # MUST CHANGE LATER TO ACTUALLY USE PROXY BUT FINE FOR NOW
-    delta_tau = [abs(tau_inf-t_vals[i]) for i in range(len(t_vals))]
-    interp_func = interp1d(delta_tau, list(range(len(r_vals))), kind='nearest')
-    surf_ind = int(interp_func(2/3))
-    surf_radius = r_vals[surf_ind-1]
-    surf_luminosity = L_vals[surf_ind-1]
-    surf_temp = T_vals[surf_ind-1]
-    surf_dens = p_vals[surf_ind-1]
-    surf_mass = M_vals[surf_ind-1]
-    surf_opt_depth = t_vals[surf_ind-1]
-    surf_dlogPdlogT = dlogPdlogT_vals[surf_ind-1]
-    
-    theoretical_luminosity = 4*np.pi*sigma*(surf_radius**2)*(surf_temp**4)
-    norm_factor = np.sqrt(theoretical_luminosity*surf_luminosity)
-    print((surf_luminosity-theoretical_luminosity)/norm_factor)
-
-    ax.plot(r_vals, T_vals, '-', label='{}'.format(p_test))
-
-ax.legend()
-ax.set_yscale('log')
-
-
-fig2, ax2 = plt.subplots(dpi=300)
-ax2.plot(r_vals, dlogPdlogT_vals)
-#ax2.set_yscale('log')
-ax2.set_xlim(0,1e9)
-ax2.set_ylim(0, 10)
-    
     
     
     
