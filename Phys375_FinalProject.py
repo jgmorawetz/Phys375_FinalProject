@@ -373,7 +373,7 @@ def Opacity_Proxy(i, p_vals, dpdr_vals, T_vals):
 
 
 
-Tc = 2.7*10**7#8.23544*10**6
+Tc = 8.23544*10**6#2*10**7#8.23544*10**6
 omega = 0
 
 def Trial_Error(pc_test):
@@ -404,14 +404,11 @@ def Trial_Error(pc_test):
     L = M*E
     t = Optical_Depth_Gradient(Opacity(p, T), p)
     
-    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 50000*dr),
+    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 40000*dr),
                      y0=[p, T, M, L, t, w], first_step=dr, max_step=dr)
     
     r_vals = soln.t
-   # p_vals = soln.y[0]
-   # dpdr_vals = np.gradient(p_vals, r_vals)
     T_vals = soln.y[1]
-  #  M_vals = soln.y[2]
     L_vals = soln.y[3]
     t_vals = soln.y[4]
     
@@ -428,13 +425,60 @@ def Trial_Error(pc_test):
     return (surf_luminosity-theoretical_luminosity)/norm_factor
     
 
-
-pc_soln = bisect(Trial_Error, 0.3*1000, 500*1000, xtol=0.01)
-
+pc_soln = bisect(Trial_Error, 0.3*1000, 500*1000, xtol=0.00000001)
 
 
+#%%
+fig, ax = plt.subplots(dpi=300)
+ax.set_xlim(0, 1e9)
+
+for p_test in [61341]:#np.linspace(61340.01632, 61340.016354, 10):
+    p = p_test
+    T = Tc
+    w = omega
+    M = 4/3*np.pi*(dr**3)*p
+    E = Energy_Generation_Rate(p, T)
+    L = M*E
+    t = Optical_Depth_Gradient(Opacity(p, T), p)
+    
+    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 10000*dr),
+                     y0=[p, T, M, L, t, w], first_step=dr, max_step=dr)
+    
+    r_vals = soln.t
+    p_vals = soln.y[0]
+    dpdr_vals = np.gradient(p_vals, r_vals)
+    T_vals = soln.y[1]
+    M_vals = soln.y[2]
+    L_vals = soln.y[3]
+    t_vals = soln.y[4]
+    P_vals = [Pressure(p_vals[i], T_vals[i]) for i in range(len(T_vals))]
+    logP_vals = list(map(lambda x: np.log10(x), P_vals))
+    logT_vals = list(map(lambda x: np.log10(x), T_vals))
+    dlogPdlogT_vals = np.gradient(logP_vals, logT_vals)
+    tau_inf = t_vals[-1] # MUST CHANGE LATER TO ACTUALLY USE PROXY BUT FINE FOR NOW
+    delta_tau = [abs(tau_inf-t_vals[i]) for i in range(len(t_vals))]
+    interp_func = interp1d(delta_tau, list(range(len(r_vals))), kind='nearest')
+    surf_ind = int(interp_func(2/3))
+    surf_radius = r_vals[surf_ind-1]
+    surf_luminosity = L_vals[surf_ind-1]
+    surf_temp = T_vals[surf_ind-1]
+    surf_dens = p_vals[surf_ind-1]
+    surf_mass = M_vals[surf_ind-1]
+    surf_opt_depth = t_vals[surf_ind-1]
+    surf_dlogPdlogT = dlogPdlogT_vals[surf_ind-1]
+    
+
+    ax.plot(r_vals, T_vals, '-', label='{}'.format(p_test))
+
+ax.legend()
+ax.set_yscale('log')
 
 
+fig2, ax2 = plt.subplots(dpi=300)
+ax2.plot(r_vals, dlogPdlogT_vals)
+#ax2.set_yscale('log')
+ax2.set_xlim(0,1e9)
+ax2.set_ylim(0, 10)
     
     
     
