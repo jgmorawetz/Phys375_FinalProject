@@ -9,8 +9,7 @@ Created on Tue Mar 30 12:39:44 2021
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.integrate import solve_ivp#from scipy.integrate import RK45
-from scipy.optimize import bisect
+from scipy.integrate import RK45
 from scipy.interpolate import interp1d
 
 
@@ -23,17 +22,16 @@ hbar = h/(2*np.pi) # Reduced Planck
 me = 9.109*10**-31 # Electron Mass
 mp = 1.673*10**-27 # Proton Mass
 msun = 1.989*10**30 # Sun Mass
+lsun = 3.828*10**26 # Sun Luminosity
+c = 2.998*10**8 # Speed of Light
 sigma = 5.670*10**-8 # Stefan Boltzmann
-c = 3.0*10**8 # Speed of Light
 a = 4*sigma/c
 gamma = 5/3 # Adiabatic index
-dr = 10**5 # Radius step size
 
-
-X = 0.7 # Mass Fraction of Hydrogens
+X = 0.73 # Mass Fraction of Hydrogens
 XCNO = 0.03*X # Mass Fraction of CNO
-Z = 0.03 # Mass Fraction of Other Metals
-Y = 1-X-Z # Mass Fraction of Helium
+Y = 0.25 # Mass Fraction of Helium
+Z = 1-X-Y # Mass Fraction of Other Metals
 mu = (2*X + 0.75*Y + 0.5*Z)**-1 # Mean Molecular Mass
 
 
@@ -344,7 +342,7 @@ def All_Gradients(r, all_variables):
 
 
 
-def Trial_Error(omega, Tc, pc_test):
+def Star_Trial(omega, Tc, pc_test, first_step):
     '''
     runs through a trial with the initial conditions given
 
@@ -355,110 +353,208 @@ def Trial_Error(omega, Tc, pc_test):
     Tc : FLOAT
         The central temperature (main sequence parameter).
     pc_test : FLOAT
-        The test value of central density (trial parameter).
+        The test value of central density.
+    first_step: FLOAT
+        The first step size taken (varies if needed later with RK45)
 
     Returns
     -------
-    error : FLOAT
-        The error from the current trial.
+    trial_values : TUPLE
+        Contains the trial error value along with the surface quantities,
+        and the list of all the preceeding values.
 
     '''
-    
+    # Sets all initial conditions
     p = pc_test
     T = Tc
     w = omega
-    M = 4/3*np.pi*(dr**3)*p
+    M = 4/3*np.pi*(first_step**3)*p
     E = Energy_Generation_Rate(p, T)
     L = M*E
-    t = Optical_Depth_Gradient(Opacity(p, T), p)
+    K = Opacity(p, T)
+    P = Pressure(p, T)
+    dPdT = Pressure_Temperature_Derivative(p, T)
+    dPdp = Pressure_Density_Derivative(p, T)
+    dTdr = Temperature_Gradient(p, first_step, T, L, P, K, M, w)
+    dpdr = Density_Gradient(p, first_step, M, dPdT, dTdr, dPdp, w)
+    t = Optical_Depth_Gradient(K, p)*first_step
     
-    soln = solve_ivp(fun=All_Gradients, t_span=(dr, 10000*dr), y0=[p,T,M,L,t,w],
-                     method='RK45', first_step=dr, max_step=dr) # allow for various step sizes
+    # Initiates the Runge Kutta class object
+    RK_obj = RK45(fun=All_Gradients, t0=first_step, y0=[p, T, M, L, t, w],
+                  t_bound=1e20, first_step=first_step, rtol=1e-6)
+
+    # Initiates the list of values
+    r_vals = [first_step]
+    p_vals = [p]
+    dpdr_vals = [dpdr]
+    T_vals = [T]
+    M_vals = [M]
+    L_vals = [L]
+    t_vals = [t]
+
+    while M < 1000*msun: # sets limit on mass for eroneous solutions
     
-    r_vals = soln.t
-    p_vals = soln.y[0]
-    T_vals = soln.y[1]
-    M_vals = soln.y[2]
-    L_vals = soln.y[3]
-    t_vals = soln.y[4]
-    
-    for i in range(len(r_vals)-1):
-        if t_vals[i+1]-t_vals[i] == 0: # when optical depth stops growing!
-            stop_growing_ind = i+1
+        RK_obj.step()
+        
+        # Updates variables after next step
+        r = RK_obj.t
+        p = RK_obj.y[0]
+        T = RK_obj.y[1]
+        M = RK_obj.y[2]
+        L = RK_obj.y[3]
+        t = RK_obj.y[4]
+        
+        dPdT = Pressure_Temperature_Derivative(p, T)
+        dPdp = Pressure_Density_Derivative(p, T)
+        P = Pressure(p, T)
+        K = Opacity(p, T)
+        dTdr = Temperature_Gradient(p, r, T, L, P, K, M, w)
+        dpdr = Density_Gradient(p, r, M, dPdT, dTdr, dPdp, w)
+        
+        # Calculates opacity proxy to see if small enough yet
+        if K*(p**2)/abs(dpdr) < 0.0001 or (t == t_vals[-1]):
+            t_inf = t
             break
     
-    tau_inf = t_vals[stop_growing_ind] # uses interpolation to find when the 2/3 is met
-    for j in range(stop_growing_ind-1, 0, -1):
-        if abs(tau_inf-t_vals[j]) < 2/3 and abs(tau_inf-t_vals[j-1]) > 2/3: # case where it cross 2/3
-            
-            delta_tau = [abs(tau_inf-t_vals[j]), abs(tau_inf-t_vals[j-1])]
-            r_near = [r_vals[j], r_vals[j-1]]
-            T_near = [T_vals[j], T_vals[j-1]]
-            M_near = [M_vals[j], M_vals[j-1]]
-            L_near = [L_vals[j], L_vals[j-1]]
-            
-            radius_interp = interp1d(delta_tau, r_near, kind='linear')
-            surf_radius = radius_interp(2/3)
-            temp_interp = interp1d(delta_tau, T_near, kind='linear')
-            surf_temp = temp_interp(2/3)
-            mass_interp = interp1d(delta_tau, M_near, kind='linear')
-            surf_mass = mass_interp(2/3)
-            lum_interp = interp1d(delta_tau, L_near, kind='linear')
-            surf_lum = lum_interp(2/3)
+        # Adds new values to list if not breaked yet
+        r_vals.append(r)
+        p_vals.append(p)
+        T_vals.append(T)
+        M_vals.append(M)
+        L_vals.append(L)
+        t_vals.append(t)
+    
+    
+    # Depending on whether mass didn't exceed limit (non-eroneous solution)
+    # it will now interpolate to find radius and return info
+    if M < 1000*msun:
+        delta_t = [(t_inf - t_val) for t_val in t_vals]
+        r_interp = interp1d(delta_t, r_vals, kind='linear')
+        p_interp = interp1d(delta_t, p_vals, kind='linear')
+        T_interp = interp1d(delta_t, T_vals, kind='linear')
+        M_interp = interp1d(delta_t, M_vals, kind='linear')
+        L_interp = interp1d(delta_t, L_vals, kind='linear')
+        t_interp = interp1d(delta_t, t_vals, kind='linear')
+    
+    else:
+        delta_t = [(t_vals[-1] - t_val) for t_val in t_vals]
+        r_interp = interp1d(delta_t, r_vals, kind='linear')
+        p_interp = interp1d(delta_t, p_vals, kind='linear')
+        T_interp = interp1d(delta_t, T_vals, kind='linear')
+        M_interp = interp1d(delta_t, M_vals, kind='linear')
+        L_interp = interp1d(delta_t, L_vals, kind='linear')
+        t_interp = interp1d(delta_t, t_vals, kind='linear')
+        
+    r_surf = r_interp(2/3)
+    p_surf = p_interp(2/3)
+    T_surf = T_interp(2/3)
+    M_surf = M_interp(2/3)
+    L_surf = L_interp(2/3)
+    t_surf = t_interp(2/3)
+        
+    # Determines which index to cover up until to obtain all the values
+    for ind in range(len(r_vals)-1, 0, -1):
+        if r_vals[ind] < r_surf:
+            up_to_ind = len(r_vals)
             break
     
-    theoretical_lum = 4*np.pi*sigma*(surf_radius**2)*(surf_temp**4)
-    norm_factor = np.sqrt(theoretical_lum*surf_lum)
-    return (surf_lum-theoretical_lum)/norm_factor, surf_radius, surf_temp, surf_mass, surf_lum
+    # Selects the list up until the index at which no more values included
+    all_r_vals = r_vals[0:up_to_ind]
+    all_p_vals = p_vals[0:up_to_ind]
+    all_T_vals = T_vals[0:up_to_ind]
+    all_M_vals = M_vals[0:up_to_ind]
+    all_L_vals = L_vals[0:up_to_ind]
+    all_t_vals = t_vals[0:up_to_ind]
     
+    # Computes the trial solution error between theoretical L and computed L
+    theoretical_L = 4*np.pi*sigma*(r_surf**2)*(T_surf**4)
+    norm_factor = np.sqrt(theoretical_L*L_surf)
+    trial_error = (L_surf - theoretical_L)/norm_factor
+    
+    # Returns all the relevant values
+    trial_vals = (trial_error, r_surf, p_surf, T_surf, M_surf, L_surf, 
+                  t_surf, all_r_vals, all_p_vals, all_T_vals, all_M_vals, 
+                  all_L_vals, all_t_vals)
+    return trial_vals
 
 
-# Iterates through to find the right pc for value of Tc and omega
 
-lst_values = []
+# Inititates plot for the main sequence
+fig, ax = plt.subplots(dpi=300, figsize=(5, 5.5))
 
-for omega in [0]:
-    for Tc in [1.2*10**7]:#5*10**6, 2*10**7]:#, 1*10**6, 5*10**6, 1.5*10**7]: #np.logspace(start=5.5, stop=7.5, num=20, base=10):
+err_vals = []
+r_surf_vals = []
+T_surf_vals = []
+M_surf_vals = []
+L_surf_vals = []
+t_surf_vals = []
+
+Temps = np.linspace(9.2e5, 3.3e7, 7)
+Omegas = [0]
+
+# Iterates through different central temperature/omega combinations and runs
+# the stellar structure on each
+for w in Omegas:
+    for T in Temps: 
         pc_low = 0.3*1000
         pc_up = 500*1000
-        try:
-            Trial_Error(omega, Tc, pc_low) # Case where is competely convective in all trial densities
-            Trial_Error(omega, Tc, pc_up)
-            
-            while abs(pc_up-pc_low) > 0.0000000001:
-                pc_guess = (pc_low + pc_up)/2
-                pc_guess_values = Trial_Error(omega, Tc, pc_guess)
-                pc_guess_error = pc_guess_values[0]
-                if pc_guess_error < 0:
-                    pc_low = pc_guess
-                else:
-                    pc_up = pc_guess
+        while pc_up-pc_low > 1e-10:           
+            pc_guess = (pc_low + pc_up)/2
+            trial = Star_Trial(w, T, pc_guess, 1)
+            if trial[0] < 0:
+                pc_low = pc_guess
+            else:
+                pc_up = pc_guess
+                
+        trial = Star_Trial(w, T, pc_up, 1)
+        err = float(trial[0])
+        r_surf = float(trial[1])
+        T_surf = float(trial[3])
+        M_surf = float(trial[4])
+        L_surf = float(trial[5])
+        t_surf = float(trial[6])
         
-        except UnboundLocalError: # indicates that pc_guess is too low (radiative solution) doesn't take into account if no convection zone at surface
-            while abs(pc_up-pc_low) > 0.00000000001: # tolerance for narrowing down to density
-                pc_guess = (pc_low + pc_up)/2
-                try: # pc_guess is not too low but could be lower
-                    Trial_Error(omega, Tc, pc_guess)
-                    pc_up = pc_guess
-                except UnboundLocalError: # indicates that pc_guess is too low (radiative solution)
-                    pc_low = pc_guess 
-                    # Once it has the approximate pc boundary after which it diverges, it then uses bisection to find actual solution
-            pc_low = pc_up
-            pc_up = 500*1000
-            while abs(pc_up-pc_low) > 0.0000000001:
-                pc_guess = (pc_low + pc_up)/2
-                pc_guess_values = Trial_Error(omega, Tc, pc_guess)
-                pc_guess_error = pc_guess_values[0]
-                if pc_guess_error < 0:
-                    pc_low = pc_guess
-                else:
-                    pc_up = pc_guess
-        # Appends temperature specific values to saved list
-        lst_values.append(pc_guess_values)
+        # Computes temp by manually setting equation to 0, in case the value
+        # of central density converges before the error converges
+        T_surf = (L_surf/(4*np.pi*sigma*r_surf**2))**(1/4)
             
-
-
-
+        err_vals.append(err)
+        r_surf_vals.append(r_surf)
+        T_surf_vals.append(T_surf)
+        M_surf_vals.append(M_surf)
+        L_surf_vals.append(L_surf)
+        t_surf_vals.append(t_surf)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
